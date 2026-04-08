@@ -1,26 +1,52 @@
-FROM php:8.2-apache
+FROM ubuntu:22.04
 
-# Install required PHP extensions
-RUN docker-php-ext-install pdo pdo_mysql mysqli
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Fix MPM conflict — disable mpm_event, enable mpm_prefork
-RUN a2dismod mpm_event && a2enmod mpm_prefork
+# Install Apache, PHP and required extensions cleanly
+RUN apt-get update && apt-get install -y \
+    apache2 \
+    php8.1 \
+    php8.1-mysql \
+    php8.1-mbstring \
+    php8.1-xml \
+    php8.1-curl \
+    libapache2-mod-php8.1 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-# Enable mod_rewrite for .htaccess
+# Enable rewrite module
 RUN a2enmod rewrite
 
-# Copy project files to Apache web root
+# Copy project files
 COPY . /var/www/html/
+
+# Remove default Apache index page
+RUN rm -f /var/www/html/index.html
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html
 
-# Allow .htaccess overrides
-RUN sed -i 's|AllowOverride None|AllowOverride All|g' /etc/apache2/apache2.conf
+# Configure Apache virtual host
+RUN echo '<VirtualHost *:${PORT}>\n\
+    DocumentRoot /var/www/html\n\
+    DirectoryIndex index.php index.html\n\
+    <Directory /var/www/html>\n\
+        Options -Indexes +FollowSymLinks\n\
+        AllowOverride All\n\
+        Require all granted\n\
+    </Directory>\n\
+    ErrorLog ${APACHE_LOG_DIR}/error.log\n\
+    CustomLog ${APACHE_LOG_DIR}/access.log combined\n\
+</VirtualHost>' > /etc/apache2/sites-available/000-default.conf
 
-# Railway uses a dynamic $PORT — update Apache to listen on it at startup
-RUN printf '#!/bin/bash\nset -e\nsed -i "s/Listen 80/Listen ${PORT:-80}/g" /etc/apache2/ports.conf\nsed -i "s/<VirtualHost \*:80>/<VirtualHost *:${PORT:-80}>/g" /etc/apache2/sites-enabled/000-default.conf\nexec apache2-foreground\n' > /usr/local/bin/start.sh \
+# Startup script — sets Railway's dynamic PORT then starts Apache
+RUN printf '#!/bin/bash\n\
+export PORT=${PORT:-80}\n\
+sed -i "s/Listen 80/Listen $PORT/" /etc/apache2/ports.conf\n\
+sed -i "s/\\${PORT}/$PORT/g" /etc/apache2/sites-available/000-default.conf\n\
+source /etc/apache2/envvars\n\
+exec apache2 -D FOREGROUND\n' > /usr/local/bin/start.sh \
     && chmod +x /usr/local/bin/start.sh
 
 EXPOSE 80
