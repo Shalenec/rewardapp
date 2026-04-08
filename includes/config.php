@@ -13,7 +13,7 @@ function env($key, $default = null) {
 // DB credentials — tries all Railway naming formats
 define('DB_HOST',    'caboose.proxy.rlwy.net');
 define('DB_USER',    'root');
-define('DB_PASS',    'your_actual_password');
+define('DB_PASS',    'sRqXOMCllhMewkhQqgtrfLbdSsafnmOb');
 define('DB_NAME',    'railway');
 define('DB_PORT',    '16657');
 define('DB_CHARSET', 'utf8mb4');
