@@ -5,13 +5,21 @@ error_reporting(E_ALL);
 require_once 'includes/config.php';
 $db = getDB();
 
-$tables = $db->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
-
 echo "<pre>";
-if (empty($tables)) {
-    echo "❌ NO TABLES FOUND — Database is empty!";
-} else {
-    echo "✅ Tables found:\n";
-    foreach ($tables as $t) echo "  - $t\n";
-}
+
+// Check all tables exist
+$tables = $db->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
+echo "Tables: \n";
+foreach ($tables as $t) echo "  ✅ $t\n";
+
+// Check settings
+echo "\nSettings:\n";
+$settings = $db->query("SELECT * FROM settings")->fetchAll();
+foreach ($settings as $s) echo "  - {$s['setting_key']} = {$s['setting_value']}\n";
+
+// Check admin user
+echo "\nAdmin user:\n";
+$admin = $db->query("SELECT id, full_name, email, is_admin FROM users")->fetchAll();
+foreach ($admin as $u) echo "  - {$u['email']} (admin={$u['is_admin']})\n";
+
 echo "</pre>";
