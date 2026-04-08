@@ -203,7 +203,7 @@ if (isset($_SESSION['reset_user_id']) && $resetStep === 1 && empty($resetError))
             Don't have an account? <a href="<?php echo SITE_URL; ?>/register.php" style="font-weight:700;">Create one free</a>
         </div>
         <div class="auth-footer" style="margin-top:6px;">
-            <small style="color:#94a3b8;">Demo Admin: admin@rewardke.co.ke / Admin@1234</small>
+            <small style="color:#94a3b8;">Earn with Rewardke </small>
         </div>
     </div>
 </div>
