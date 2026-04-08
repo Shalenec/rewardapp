@@ -1,0 +1,8 @@
+Options -Indexes
+DirectoryIndex index.php
+
+# Prevent direct access to includes
+<FilesMatch "^(config|header|footer|admin_header|admin_footer)\.php$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
