@@ -1,31 +1,39 @@
 <?php
 // includes/config.php
 
-// Railway injects these env vars automatically when you add a MySQL service
-// Falls back to XAMPP defaults for local development
-define('DB_HOST',    getenv('MYSQLHOST')     ?: 'localhost');
-define('DB_USER',    getenv('MYSQLUSER')     ?: 'root');
-define('DB_PASS',    getenv('MYSQLPASSWORD') ?: '');
-define('DB_NAME',    getenv('MYSQLDATABASE') ?: 'rewardapp');
-define('DB_PORT',    getenv('MYSQLPORT')     ?: '3306');
+// Helper to read env vars via all three methods
+function env($key, $default = null) {
+    $val = getenv($key);
+    if ($val !== false && $val !== '') return $val;
+    if (isset($_ENV[$key])    && $_ENV[$key]    !== '') return $_ENV[$key];
+    if (isset($_SERVER[$key]) && $_SERVER[$key] !== '') return $_SERVER[$key];
+    return $default;
+}
+
+// DB credentials — tries all Railway naming formats
+define('DB_HOST',    env('MYSQLHOST')     ?? env('MYSQL_HOST')     ?? 'localhost');
+define('DB_USER',    env('MYSQLUSER')     ?? env('MYSQL_USER')     ?? 'root');
+define('DB_PASS',    env('MYSQLPASSWORD') ?? env('MYSQL_PASSWORD') ?? '');
+define('DB_NAME',    env('MYSQLDATABASE') ?? env('MYSQL_DATABASE') ?? 'rewardapp');
+define('DB_PORT',    env('MYSQLPORT')     ?? env('MYSQL_PORT')     ?? '3306');
 define('DB_CHARSET', 'utf8mb4');
 
-// Auto-detect URL: Railway provides RAILWAY_PUBLIC_DOMAIN in production
-if (getenv('RAILWAY_PUBLIC_DOMAIN')) {
-    define('SITE_URL', 'https://' . getenv('RAILWAY_PUBLIC_DOMAIN'));
+// Site URL
+if (env('RAILWAY_PUBLIC_DOMAIN')) {
+    define('SITE_URL', 'https://' . env('RAILWAY_PUBLIC_DOMAIN'));
 } else {
     define('SITE_URL', 'http://localhost/rewardapp');
 }
 define('SITE_NAME', 'RewardKe');
-define('CURRENCY', 'KES');
+define('CURRENCY',  'KES');
 
 // Session
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Auto error reporting: verbose locally, silent on Railway
-if (getenv('RAILWAY_PUBLIC_DOMAIN')) {
+// Error reporting
+if (env('RAILWAY_PUBLIC_DOMAIN')) {
     error_reporting(0);
     ini_set('display_errors', 0);
 } else {
@@ -33,19 +41,47 @@ if (getenv('RAILWAY_PUBLIC_DOMAIN')) {
     ini_set('display_errors', 1);
 }
 
+// DB Connection
 function getDB() {
     static $pdo = null;
     if ($pdo === null) {
         try {
-            $dsn = "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=" . DB_CHARSET;
-            $options = [
+            // Try single DATABASE_URL first (Railway sometimes provides this)
+            $databaseUrl = env('MYSQL_URL') ?: env('DATABASE_URL');
+            if ($databaseUrl) {
+                $parts = parse_url($databaseUrl);
+                $dsn = sprintf(
+                    "mysql:host=%s;port=%s;dbname=%s;charset=%s",
+                    $parts['host'],
+                    $parts['port'] ?? 3306,
+                    ltrim($parts['path'], '/'),
+                    DB_CHARSET
+                );
+                $user = $parts['user'];
+                $pass = $parts['pass'];
+            } else {
+                $dsn  = "mysql:host=" . DB_HOST
+                      . ";port="      . DB_PORT
+                      . ";dbname="    . DB_NAME
+                      . ";charset="   . DB_CHARSET;
+                $user = DB_USER;
+                $pass = DB_PASS;
+            }
+
+            $pdo = new PDO($dsn, $user, $pass, [
                 PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES   => false,
-            ];
-            $pdo = new PDO($dsn, DB_USER, DB_PASS, $options);
+            ]);
+
         } catch (PDOException $e) {
-            die('<div style="font-family:Arial;padding:20px;background:#fee;border:1px solid #f00;margin:20px;border-radius:8px;"><strong>Database Error:</strong> ' . htmlspecialchars($e->getMessage()) . '<br><small>Check your database settings in includes/config.php</small></div>');
+            die('
+                <div style="font-family:Arial;padding:20px;background:#fee;
+                            border:1px solid #f00;margin:20px;border-radius:8px;">
+                    <strong>Database Error:</strong> ' . htmlspecialchars($e->getMessage()) . '
+                    <br><small>Check your database settings in includes/config.php</small>
+                </div>
+            ');
         }
     }
     return $pdo;
@@ -88,7 +124,7 @@ function formatKES($amount) {
 
 function generateReferralCode($length = 8) {
     $chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    $code = '';
+    $code  = '';
     for ($i = 0; $i < $length; $i++) {
         $code .= $chars[random_int(0, strlen($chars) - 1)];
     }
@@ -97,19 +133,26 @@ function generateReferralCode($length = 8) {
 
 function addTransaction($userId, $type, $amount, $balanceAfter, $description, $refId = null) {
     $db = getDB();
-    $stmt = $db->prepare("INSERT INTO transactions (user_id, type, amount, balance_after, description, reference_id) VALUES (?,?,?,?,?,?)");
+    $stmt = $db->prepare(
+        "INSERT INTO transactions (user_id, type, amount, balance_after, description, reference_id)
+         VALUES (?,?,?,?,?,?)"
+    );
     $stmt->execute([$userId, $type, $amount, $balanceAfter, $description, $refId]);
 }
 
 function addNotification($userId, $title, $message, $type = 'info') {
     $db = getDB();
-    $stmt = $db->prepare("INSERT INTO notifications (user_id, title, message, type) VALUES (?,?,?,?)");
+    $stmt = $db->prepare(
+        "INSERT INTO notifications (user_id, title, message, type) VALUES (?,?,?,?)"
+    );
     $stmt->execute([$userId, $title, $message, $type]);
 }
 
 function getUnreadNotifications($userId) {
     $db = getDB();
-    $stmt = $db->prepare("SELECT COUNT(*) as cnt FROM notifications WHERE user_id = ? AND is_read = 0");
+    $stmt = $db->prepare(
+        "SELECT COUNT(*) as cnt FROM notifications WHERE user_id = ? AND is_read = 0"
+    );
     $stmt->execute([$userId]);
     $row = $stmt->fetch();
     return (int)$row['cnt'];
@@ -129,7 +172,7 @@ function sanitize($input) {
 
 function redirect($url, $msg = '', $type = 'success') {
     if ($msg) {
-        $_SESSION['flash_msg'] = $msg;
+        $_SESSION['flash_msg']  = $msg;
         $_SESSION['flash_type'] = $type;
     }
     header('Location: ' . $url);
@@ -138,7 +181,7 @@ function redirect($url, $msg = '', $type = 'success') {
 
 function getFlash() {
     if (isset($_SESSION['flash_msg'])) {
-        $msg = $_SESSION['flash_msg'];
+        $msg  = $_SESSION['flash_msg'];
         $type = $_SESSION['flash_type'] ?? 'info';
         unset($_SESSION['flash_msg'], $_SESSION['flash_type']);
         return ['msg' => $msg, 'type' => $type];
@@ -146,30 +189,19 @@ function getFlash() {
     return null;
 }
 
-// Process daily investment returns — runs ONCE per day only
 function processDailyReturns() {
     $db    = getDB();
     $today = date('Y-m-d');
 
-    // Fast PHP-session check first (avoids DB hit on every page load)
     if (isset($_SESSION['returns_processed_date']) && $_SESSION['returns_processed_date'] === $today) {
         return;
     }
 
-    // Double-check against DB using INSERT ... ON DUPLICATE KEY
-    // This atomically ensures only one process wins even under concurrent requests
     try {
-        $inserted = $db->prepare(
-            "INSERT INTO settings (setting_key, setting_value)
-             VALUES ('last_returns_run', ?)
-             ON DUPLICATE KEY UPDATE
-               setting_value = IF(setting_value = ?, setting_value, VALUES(setting_value))"
-        );
-        // Only update the row if the stored value is NOT already today
         $db->prepare(
             "INSERT INTO settings (setting_key, setting_value) VALUES ('last_returns_run', '1970-01-01')
              ON DUPLICATE KEY UPDATE setting_value = setting_value"
-        )->execute(); // ensure row exists
+        )->execute();
 
         $lastRun = getSetting('last_returns_run');
         if ($lastRun === $today) {
@@ -177,20 +209,16 @@ function processDailyReturns() {
             return;
         }
 
-        // Mark as running FIRST before processing (prevents double-run)
         $db->prepare(
             "UPDATE settings SET setting_value = ? WHERE setting_key = 'last_returns_run'"
         )->execute([$today]);
 
     } catch (Exception $e) {
-        return; // Fail silently — try again next load
+        return;
     }
 
-    // Mark in session so we skip DB check for rest of this session today
     $_SESSION['returns_processed_date'] = $today;
 
-    // Fetch all active investments due for a return today
-    // Only investments that started BEFORE today (not same-day investments)
     $stmt = $db->prepare(
         "SELECT * FROM investments
          WHERE status = 'active'
@@ -204,7 +232,6 @@ function processDailyReturns() {
         $dailyReturn = (float)$inv['daily_return'];
         $newEarned   = (float)$inv['earned_so_far'] + $dailyReturn;
 
-        // Cap earned at total_return
         if ($newEarned > (float)$inv['total_return']) {
             $dailyReturn = (float)$inv['total_return'] - (float)$inv['earned_so_far'];
             $newEarned   = (float)$inv['total_return'];
@@ -212,18 +239,17 @@ function processDailyReturns() {
 
         if ($dailyReturn <= 0) continue;
 
-        // Credit to user wallet
         $db->prepare(
-            "UPDATE users SET wallet_balance = wallet_balance + ?, total_earned = total_earned + ? WHERE id = ?"
+            "UPDATE users SET wallet_balance = wallet_balance + ?,
+             total_earned = total_earned + ? WHERE id = ?"
         )->execute([$dailyReturn, $dailyReturn, $inv['user_id']]);
 
-        // Get updated balance for transaction log
         $userStmt = $db->prepare("SELECT wallet_balance FROM users WHERE id = ?");
         $userStmt->execute([$inv['user_id']]);
         $user = $userStmt->fetch();
 
-        // Mark completed if fully paid out
         $status = ($newEarned >= (float)$inv['total_return']) ? 'completed' : 'active';
+
         $db->prepare(
             "UPDATE investments SET earned_so_far = ?, status = ? WHERE id = ?"
         )->execute([$newEarned, $status, $inv['id']]);
@@ -239,7 +265,8 @@ function processDailyReturns() {
             addNotification(
                 $inv['user_id'],
                 'Investment Completed!',
-                'Your investment of ' . formatKES($inv['amount']) . ' has completed. Total earned: ' . formatKES($inv['total_return']),
+                'Your investment of ' . formatKES($inv['amount']) .
+                ' has completed. Total earned: ' . formatKES($inv['total_return']),
                 'success'
             );
         }
