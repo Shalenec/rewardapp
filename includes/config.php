@@ -11,11 +11,11 @@ function env($key, $default = null) {
 }
 
 // DB credentials — tries all Railway naming formats
-define('DB_HOST',    env('MYSQLHOST')     ?? env('MYSQL_HOST')     ?? 'localhost');
-define('DB_USER',    env('MYSQLUSER')     ?? env('MYSQL_USER')     ?? 'root');
-define('DB_PASS',    env('MYSQLPASSWORD') ?? env('MYSQL_PASSWORD') ?? '');
-define('DB_NAME',    env('MYSQLDATABASE') ?? env('MYSQL_DATABASE') ?? 'rewardapp');
-define('DB_PORT',    env('MYSQLPORT')     ?? env('MYSQL_PORT')     ?? '3306');
+define('DB_HOST',    'caboose.proxy.rlwy.net');
+define('DB_USER',    'root');
+define('DB_PASS',    'your_actual_password');
+define('DB_NAME',    'railway');
+define('DB_PORT',    '16657');
 define('DB_CHARSET', 'utf8mb4');
 
 // Site URL
