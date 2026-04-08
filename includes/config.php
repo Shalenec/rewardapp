@@ -10,12 +10,12 @@ function env($key, $default = null) {
     return $default;
 }
 
-// DB credentials — tries all Railway naming formats
-define('DB_HOST',    env('MYSQLHOST') ?: 'mysql.railway.internal');
-define('DB_USER',    env('MYSQLUSER') ?: 'root');
-define('DB_PASS',    env('MYSQLPASSWORD') ?: 'sRqXOMCllhMewkhQqgtrfLbdSsafnmOb'); // ← add password as fallback
-define('DB_NAME',    env('MYSQLDATABASE') ?: 'railway');
-define('DB_PORT',    env('MYSQLPORT') ?: '3306');
+// DB credentials — reads directly from Railway env vars
+define('DB_HOST',    env('MYSQLHOST'));       // ← Railway injects this automatically
+define('DB_USER',    env('MYSQLUSER'));
+define('DB_PASS',    env('MYSQLPASSWORD'));
+define('DB_NAME',    env('MYSQLDATABASE'));
+define('DB_PORT',    env('MYSQLPORT', '3306'));
 define('DB_CHARSET', 'utf8mb4');
 
 // Site URL
@@ -46,29 +46,26 @@ function getDB() {
     static $pdo = null;
     if ($pdo === null) {
         try {
-            // Try single DATABASE_URL first (Railway sometimes provides this)
-            $databaseUrl = env('MYSQL_URL') ?: env('DATABASE_URL');
-            if ($databaseUrl) {
-                $parts = parse_url($databaseUrl);
-                $dsn = sprintf(
-                    "mysql:host=%s;port=%s;dbname=%s;charset=%s",
-                    $parts['host'],
-                    $parts['port'] ?? 3306,
-                    ltrim($parts['path'], '/'),
-                    DB_CHARSET
+            // Validate that required env vars are present
+            if (!DB_HOST || !DB_USER || !DB_NAME) {
+                throw new PDOException(
+                    "Missing DB environment variables. " .
+                    "MYSQLHOST=" . (DB_HOST ?: '❌ missing') . " " .
+                    "MYSQLUSER=" . (DB_USER ?: '❌ missing') . " " .
+                    "MYSQLDATABASE=" . (DB_NAME ?: '❌ missing')
                 );
-                $user = $parts['user'];
-                $pass = $parts['pass'];
-            } else {
-                $dsn  = "mysql:host=" . DB_HOST
-                      . ";port="      . DB_PORT
-                      . ";dbname="    . DB_NAME
-                      . ";charset="   . DB_CHARSET;
-                $user = DB_USER;
-                $pass = DB_PASS;
             }
 
-            $pdo = new PDO($dsn, $user, $pass, [
+            // Always use host + port (TCP) — never socket/localhost
+            $dsn = sprintf(
+                "mysql:host=%s;port=%s;dbname=%s;charset=%s",
+                DB_HOST,
+                DB_PORT,
+                DB_NAME,
+                DB_CHARSET
+            );
+
+            $pdo = new PDO($dsn, DB_USER, DB_PASS, [
                 PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES   => false,
@@ -79,7 +76,7 @@ function getDB() {
                 <div style="font-family:Arial;padding:20px;background:#fee;
                             border:1px solid #f00;margin:20px;border-radius:8px;">
                     <strong>Database Error:</strong> ' . htmlspecialchars($e->getMessage()) . '
-                    <br><small>Check your database settings in includes/config.php</small>
+                    <br><small>Check your Railway environment variables (MYSQLHOST, MYSQLUSER, MYSQLPASSWORD, MYSQLDATABASE)</small>
                 </div>
             ');
         }
