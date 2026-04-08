@@ -11,11 +11,11 @@ function env($key, $default = null) {
 }
 
 // DB credentials — tries all Railway naming formats
-define('DB_HOST',    'caboose.proxy.rlwy.net');
-define('DB_USER',    'root');
-define('DB_PASS',    'sRqXOMCllhMewkhQqgtrfLbdSsafnmOb');
-define('DB_NAME',    'railway');
-define('DB_PORT',    '16657');
+define('DB_HOST',    env('MYSQLHOST') ?: 'caboose.proxy.rlwy.net');
+define('DB_USER',    env('MYSQLUSER') ?: 'root');
+define('DB_PASS',    env('MYSQLPASSWORD') ?: '');
+define('DB_NAME',    env('MYSQLDATABASE') ?: 'railway');
+define('DB_PORT',    env('MYSQLPORT') ?: '16657');
 define('DB_CHARSET', 'utf8mb4');
 
 // Site URL
