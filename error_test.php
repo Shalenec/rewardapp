@@ -1,42 +1,58 @@
 <?php
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-require_once '../includes/config.php';
+require_once 'includes/config.php';
 
 echo "<pre>";
 
 $db = getDB();
+$user_id = 2; // change to a real user id who has a deposit
 
-// Check withdrawals table
-echo "--- withdrawals columns ---\n";
-$cols = $db->query("DESCRIBE withdrawals")->fetchAll(PDO::FETCH_COLUMN);
-echo implode(', ', $cols) . "\n\n";
+// Simulate exact withdrawal validation flow
+try {
+    // Check deposits
+    $depCheck = $db->prepare("SELECT COALESCE(SUM(amount),0) as total FROM deposits WHERE user_id = ? AND status = 'approved'");
+    $depCheck->execute([$user_id]);
+    $totalDeposited = (float)$depCheck->fetch()['total'];
+    echo "✅ Total deposited: $totalDeposited\n";
 
-// Check a pending withdrawal exists
-$w = $db->query("SELECT * FROM withdrawals WHERE status = 'pending' LIMIT 1")->fetch();
-echo "Pending withdrawal: ";
-print_r($w);
+    // Check wallet balance
+    $userStmt = $db->prepare("SELECT * FROM users WHERE id = ?");
+    $userStmt->execute([$user_id]);
+    $user = $userStmt->fetch();
+    echo "✅ Wallet balance: " . $user['wallet_balance'] . "\n";
+    echo "✅ Total withdrawn: " . $user['total_withdrawn'] . "\n";
 
-// Simulate approval
-if ($w) {
-    try {
-        $db->prepare("UPDATE withdrawals SET status = 'approved', processed_by = 1, processed_at = NOW() WHERE id = ?")
-           ->execute([$w['id']]);
-        echo "✅ Approval update worked\n";
+    // Simulate withdrawal insert
+    $amount = 500;
+    $phone = '0700000000';
+    $db->prepare("INSERT INTO withdrawals (user_id, amount, phone_number) VALUES (?,?,?)")
+       ->execute([$user_id, $amount, $phone]);
+    echo "✅ Withdrawal inserted\n";
 
-        // Update user total_withdrawn
-        $db->prepare("UPDATE users SET total_withdrawn = total_withdrawn + ? WHERE id = ?")
-           ->execute([$w['amount'], $w['user_id']]);
-        echo "✅ total_withdrawn updated\n";
+    // Deduct balance
+    $db->prepare("UPDATE users SET wallet_balance = wallet_balance - ? WHERE id = ?")
+       ->execute([$amount, $user_id]);
+    echo "✅ Balance deducted\n";
 
-        addNotification($w['user_id'], 'Withdrawal Approved', 'Your withdrawal of ' . formatKES($w['amount']) . ' has been approved.', 'success');
-        echo "✅ Notification sent\n";
+    // Get new balance
+    $balStmt = $db->prepare("SELECT wallet_balance FROM users WHERE id = ?");
+    $balStmt->execute([$user_id]);
+    $newBal = $balStmt->fetch()['wallet_balance'];
+    echo "✅ New balance: $newBal\n";
 
-    } catch(Exception $e) {
-        echo "❌ ERROR: " . $e->getMessage() . "\n";
-    }
-} else {
-    echo "⚠️ No pending withdrawals found to test\n";
+    // Add transaction
+    addTransaction($user_id, 'withdrawal', $amount, $newBal, 'Withdrawal request to M-Pesa ' . $phone);
+    echo "✅ Transaction logged\n";
+
+    // Add notification
+    addNotification($user_id, 'Withdrawal Requested', 'Your withdrawal of ' . formatKES($amount) . ' is pending.', 'info');
+    echo "✅ Notification added\n";
+
+    echo "\n✅ ALL STEPS PASSED!\n";
+
+} catch(Exception $e) {
+    echo "❌ ERROR: " . $e->getMessage() . "\n";
 }
 
 echo "</pre>";
