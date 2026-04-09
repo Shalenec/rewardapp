@@ -25,12 +25,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['withdraw'])) {
     $phone  = sanitize($_POST['phone'] ?? '');
     $minWith = (float)getSetting('min_withdrawal');
 
-    if ($amount < $minWith) {
-        redirect('wallet.php?tab=withdraw', 'Minimum withdrawal is ' . formatKES($minWith) . '.', 'danger');
-    } elseif ($user['wallet_balance'] < $amount) {
-        redirect('wallet.php?tab=withdraw', 'Insufficient wallet balance.', 'danger');
-    } elseif (empty($phone)) {
-        redirect('wallet.php?tab=withdraw', 'M-Pesa phone number is required.', 'danger');
+    // Check total deposits approved
+$depCheck = $db->prepare("SELECT COALESCE(SUM(amount),0) as total FROM deposits WHERE user_id = ? AND status = 'approved'");
+$depCheck->execute([$user['id']]);
+$totalDeposited = (float)$depCheck->fetch()['total'];
+
+if ($totalDeposited < 500) {
+    redirect('wallet.php?tab=withdraw', 'You must have at least one approved deposit of KES 500 or more before withdrawing.', 'danger');
+} elseif ($amount < $minWith) {
+    redirect('wallet.php?tab=withdraw', 'Minimum withdrawal is ' . formatKES($minWith) . '.', 'danger');
+} elseif ($user['wallet_balance'] < $amount) {
+    redirect('wallet.php?tab=withdraw', 'Insufficient wallet balance.', 'danger');
+} elseif (empty($phone)) {
+    redirect('wallet.php?tab=withdraw', 'M-Pesa phone number is required.', 'danger');
+}
     } else {
         $feePercent = (float)getSetting('withdrawal_fee_percent');
         $fee = $amount * ($feePercent / 100);
