@@ -40,7 +40,6 @@ include 'includes/header.php';
             <p>Here's your earning summary for today, <?php echo date('l, d F Y'); ?></p>
         <div>
     <a href="ads.php" class="btn btn-outline"><i class="fas fa-play-circle"></i> Watch Ads & Earn</a>
-    <a href="invest.php" class="btn btn-primary"><i class="fas fa-seedling"></i> Invest Now</a>
 </div>
 </div>
 
