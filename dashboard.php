@@ -39,8 +39,8 @@ include 'includes/header.php';
             <h1>Hello, <?php echo sanitize(explode(' ', $user['full_name'])[0]); ?>! 👋</h1>
             <p>Here's your earning summary for today, <?php echo date('l, d F Y'); ?></p>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
-    <a href="ads.php" class="btn btn-primary"><i class="fas fa-play-circle"></i> Watch Ads & Earn</a>
-    <a href="invest.php" class="btn btn-gray"><i class="fas fa-seedling"></i> Invest Now</a>
+    <a href="ads.php" class="btn btn-outline"><i class="fas fa-play-circle"></i> Watch Ads & Earn</a>
+    <a href="invest.php" class="btn btn-primary"><i class="fas fa-seedling"></i> Invest Now</a>
 </div>
 </div>
 
