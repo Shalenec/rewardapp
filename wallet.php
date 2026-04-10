@@ -117,21 +117,21 @@ include 'includes/header.php';
             <form method="POST">
 
                 <!-- Payment Method Selector -->
-                <div class="form-group">
-                    <label class="form-label">Payment Method</label>
-                    <div style="display:flex;gap:10px;margin-bottom:4px;">
-                        <label style="flex:1;cursor:pointer;">
-                            <input type="radio" name="method" value="M-Pesa" checked onchange="toggleMethod(this.value)" style="display:none;">
-                            <div id="btn-mpesa" style="border:2px solid var(--primary);border-radius:8px;padding:10px;text-align:center;font-weight:600;font-size:0.85rem;">
-                                📱 M-Pesa
-                            </div>
-                        </label>
-                        <label style="flex:1;cursor:pointer;">
-                            <input type="radio" name="method" value="USDT" onchange="toggleMethod(this.value)" style="display:none;">
-                            <div id="btn-usdt" style="border:2px solid var(--border);border-radius:8px;padding:10px;text-align:center;font-weight:600;font-size:0.85rem;">
-                                💎 USDT (BEP20)
-                            </div>
-                        </label>
+<div class="form-group">
+    <label class="form-label">Payment Method</label>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:4px;">
+        <label style="flex:1 1 120px;min-width:0;cursor:pointer;">
+            <input type="radio" name="method" value="M-Pesa" checked onchange="toggleMethod(this.value)" style="display:none;">
+            <div id="btn-mpesa" style="border:2px solid var(--primary);border-radius:8px;padding:10px;text-align:center;font-weight:600;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                📱 M-Pesa
+            </div>
+        </label>
+        <label style="flex:1 1 120px;min-width:0;cursor:pointer;">
+            <input type="radio" name="method" value="USDT" onchange="toggleMethod(this.value)" style="display:none;">
+            <div id="btn-usdt" style="border:2px solid var(--border);border-radius:8px;padding:10px;text-align:center;font-weight:600;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                💎 USDT (BEP20)
+            </div>
+        </label>
                     </div>
                 </div>
 
