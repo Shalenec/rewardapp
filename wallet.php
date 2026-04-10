@@ -115,16 +115,22 @@ include 'includes/header.php';
         <div class="card">
             <div class="card-title" style="margin-bottom:20px;"><i class="fas fa-arrow-down" style="color:var(--success);"></i> Deposit Funds</div>
 
-            <!-- Payment Method Toggle — plain buttons, no label/radio hack -->
+<!-- Deposit Tab -->
+<div class="tab-pane active" id="tab-deposit">
+    <div class="grid-2">
+        <div class="card">
+            <div class="card-title" style="margin-bottom:20px;"><i class="fas fa-arrow-down" style="color:var(--success);"></i> Deposit Funds</div>
+
+            <!-- Method Toggle -->
             <div class="form-group">
                 <label class="form-label">Payment Method</label>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px;">
                     <button type="button" id="btn-mpesa" onclick="toggleMethod('M-Pesa')"
-                        style="border:2px solid var(--primary);background:transparent;border-radius:8px;padding:10px;text-align:center;font-weight:600;font-size:0.85rem;cursor:pointer;width:100%;box-sizing:border-box;">
+                        style="border:2px solid var(--primary);background:transparent;border-radius:8px;padding:10px;font-weight:600;font-size:0.85rem;cursor:pointer;box-sizing:border-box;">
                         📱 M-Pesa
                     </button>
                     <button type="button" id="btn-usdt" onclick="toggleMethod('USDT')"
-                        style="border:2px solid var(--border);background:transparent;border-radius:8px;padding:10px;text-align:center;font-weight:600;font-size:0.85rem;cursor:pointer;width:100%;box-sizing:border-box;">
+                        style="border:2px solid var(--border);background:transparent;border-radius:8px;padding:10px;font-weight:600;font-size:0.85rem;cursor:pointer;box-sizing:border-box;">
                         💎 USDT
                     </button>
                 </div>
@@ -133,7 +139,6 @@ include 'includes/header.php';
             <form method="POST">
                 <input type="hidden" name="method" id="methodInput" value="M-Pesa">
 
-                <!-- Amount -->
                 <div class="form-group">
                     <label class="form-label">Amount (KES)</label>
                     <div style="position:relative;">
@@ -143,7 +148,7 @@ include 'includes/header.php';
                     <div class="form-text">Minimum deposit: <?php echo formatKES($minDep); ?></div>
                 </div>
 
-                <!-- M-Pesa Details (original layout, unchanged) -->
+                <!-- M-Pesa section (original block, untouched) -->
                 <div id="mpesa-details">
                     <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:8px;padding:16px;margin-bottom:20px;font-size:0.875rem;">
                         <div style="font-weight:700;margin-bottom:8px;color:#065f46;"><i class="fas fa-mobile-alt"></i> M-Pesa Payment Details</div>
@@ -159,7 +164,7 @@ include 'includes/header.php';
                     </div>
                 </div>
 
-                <!-- USDT Details -->
+                <!-- USDT section -->
                 <div id="usdt-details" style="display:none;">
                     <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px;margin-bottom:20px;font-size:0.875rem;">
                         <div style="font-weight:700;margin-bottom:8px;color:#1e40af;"><i class="fas fa-coins"></i> USDT Payment Details</div>
@@ -188,6 +193,7 @@ include 'includes/header.php';
         </div>
 
         <div class="card">
+            <!-- Deposit History — completely unchanged -->
             <div class="card-title" style="margin-bottom:16px;"><i class="fas fa-history" style="color:var(--gray);"></i> Deposit History</div>
             <?php if (empty($deposits)): ?>
             <div class="empty-state"><i class="fas fa-receipt"></i><p>No deposits yet.</p></div>
