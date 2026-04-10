@@ -10,9 +10,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deposit'])) {
     $txId   = sanitize($_POST['transaction_id'] ?? '');
     $minDep = (float)getSetting('min_deposit');
 
-    if ($amount < $minDep) {
-        redirect('wallet.php?tab=deposit', 'Minimum deposit is ' . formatKES($minDep) . '.', 'danger');
-    } else {
+    // Check duplicate transaction ID
+$txCheck = $db->prepare("SELECT id FROM deposits WHERE transaction_id = ? AND transaction_id != '' LIMIT 1");
+$txCheck->execute([$txId]);
+$txExists = $txCheck->fetch();
+
+if ($amount < $minDep) {
+    redirect('wallet.php?tab=deposit', 'Minimum deposit is ' . formatKES($minDep) . '.', 'danger');
+} elseif (!empty($txId) && $txExists) {
+    redirect('wallet.php?tab=deposit', 'This M-Pesa transaction ID has already been used. Please check and try again.', 'danger');
+} else {
         $db->prepare("INSERT INTO deposits (user_id, amount, transaction_id) VALUES (?,?,?)")->execute([$user['id'], $amount, $txId]);
         addNotification($user['id'], 'Deposit Request Received', 'Your deposit of ' . formatKES($amount) . ' is pending approval. We will process it within 24 hours.', 'info');
         redirect('wallet.php', 'Deposit request submitted! Pending admin approval.', 'success');
