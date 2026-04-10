@@ -6,22 +6,23 @@ $db = getDB();
 
 // Handle Deposit Request
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deposit'])) {
-    $amount = (float)($_POST['amount'] ?? 0);
-    $txId   = sanitize($_POST['transaction_id'] ?? '');
-    $minDep = (float)getSetting('min_deposit');
+    $amount  = (float)($_POST['amount'] ?? 0);
+    $txId    = sanitize($_POST['transaction_id'] ?? '');
+    $method  = sanitize($_POST['method'] ?? 'M-Pesa');
+    $minDep  = (float)getSetting('min_deposit');
 
     // Check duplicate transaction ID
-$txCheck = $db->prepare("SELECT id FROM deposits WHERE transaction_id = ? AND transaction_id != '' LIMIT 1");
-$txCheck->execute([$txId]);
-$txExists = $txCheck->fetch();
+    $txCheck = $db->prepare("SELECT id FROM deposits WHERE transaction_id = ? AND transaction_id != '' LIMIT 1");
+    $txCheck->execute([$txId]);
+    $txExists = $txCheck->fetch();
 
-if ($amount < $minDep) {
-    redirect('wallet.php?tab=deposit', 'Minimum deposit is ' . formatKES($minDep) . '.', 'danger');
-} elseif (!empty($txId) && $txExists) {
-    redirect('wallet.php?tab=deposit', 'This M-Pesa transaction ID has already been used. Please check and try again.', 'danger');
-} else {
-        $db->prepare("INSERT INTO deposits (user_id, amount, transaction_id) VALUES (?,?,?)")->execute([$user['id'], $amount, $txId]);
-        addNotification($user['id'], 'Deposit Request Received', 'Your deposit of ' . formatKES($amount) . ' is pending approval. We will process it within 24 hours.', 'info');
+    if ($amount < $minDep) {
+        redirect('wallet.php?tab=deposit', 'Minimum deposit is ' . formatKES($minDep) . '.', 'danger');
+    } elseif (!empty($txId) && $txExists) {
+        redirect('wallet.php?tab=deposit', 'This transaction ID has already been used. Please check and try again.', 'danger');
+    } else {
+        $db->prepare("INSERT INTO deposits (user_id, amount, transaction_id, method) VALUES (?,?,?,?)")->execute([$user['id'], $amount, $txId, $method]);
+        addNotification($user['id'], 'Deposit Request Received', 'Your deposit of ' . formatKES($amount) . ' via ' . $method . ' is pending approval. We will process it within 24 hours.', 'info');
         redirect('wallet.php', 'Deposit request submitted! Pending admin approval.', 'success');
     }
 }
@@ -74,6 +75,9 @@ $minWith = getSetting('min_withdrawal');
 $feeP    = getSetting('withdrawal_fee_percent');
 $paybill = getSetting('mpesa_paybill');
 $account = getSetting('mpesa_account');
+$usdtAddress = getSetting('usdt_wallet_address');
+$usdtNetwork = getSetting('usdt_network');
+$usdtRate    = (float)getSetting('usdt_rate');
 
 $pageTitle = 'Wallet';
 include 'includes/header.php';
@@ -109,33 +113,78 @@ include 'includes/header.php';
 <div class="tab-pane active" id="tab-deposit">
     <div class="grid-2">
         <div class="card">
-            <div class="card-title" style="margin-bottom:20px;"><i class="fas fa-arrow-down" style="color:var(--success);"></i> Deposit via M-Pesa</div>
-            <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:8px;padding:16px;margin-bottom:20px;font-size:0.875rem;">
-                <div style="font-weight:700;margin-bottom:8px;color:#065f46;"><i class="fas fa-mobile-alt"></i> M-Pesa Payment Details</div>
-                <div style="color:#047857;line-height:1.8;">
-                    <div>📱 <strong>Paybill Number:</strong> <?php echo $paybill; ?></div>
-                    <div>🔢 <strong>Account Number:</strong> <?php echo $account; ?></div>
-                    <div style="margin-top:8px;font-size:0.8rem;opacity:.85;">After payment, enter the M-Pesa transaction ID below and submit. Your wallet will be credited after admin verification.</div>
-                </div>
-            </div>
+            <div class="card-title" style="margin-bottom:20px;"><i class="fas fa-arrow-down" style="color:var(--success);"></i> Deposit Funds</div>
             <form method="POST">
+
+                <!-- Payment Method Selector -->
+                <div class="form-group">
+                    <label class="form-label">Payment Method</label>
+                    <div style="display:flex;gap:10px;margin-bottom:4px;">
+                        <label style="flex:1;cursor:pointer;">
+                            <input type="radio" name="method" value="M-Pesa" checked onchange="toggleMethod(this.value)" style="display:none;">
+                            <div id="btn-mpesa" style="border:2px solid var(--primary);border-radius:8px;padding:10px;text-align:center;font-weight:600;font-size:0.85rem;">
+                                📱 M-Pesa
+                            </div>
+                        </label>
+                        <label style="flex:1;cursor:pointer;">
+                            <input type="radio" name="method" value="USDT" onchange="toggleMethod(this.value)" style="display:none;">
+                            <div id="btn-usdt" style="border:2px solid var(--border);border-radius:8px;padding:10px;text-align:center;font-weight:600;font-size:0.85rem;">
+                                💎 USDT (BEP20)
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Amount -->
                 <div class="form-group">
                     <label class="form-label">Amount (KES)</label>
                     <div style="position:relative;">
                         <span class="input-prefix">KES</span>
-                        <input type="number" name="amount" class="form-control" style="padding-left:52px;" placeholder="Enter amount" min="<?php echo $minDep; ?>" step="1" required>
+                        <input type="number" name="amount" id="depositAmount" class="form-control" style="padding-left:52px;" placeholder="Enter amount" min="<?php echo $minDep; ?>" step="1" oninput="calcUsdt(this.value)" required>
                     </div>
                     <div class="form-text">Minimum deposit: <?php echo formatKES($minDep); ?></div>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">M-Pesa Transaction ID</label>
-                    <input type="text" name="transaction_id" class="form-control" placeholder="e.g. RBC1234XYZ" style="text-transform:uppercase;">
+
+                <!-- M-Pesa Details -->
+                <div id="mpesa-details">
+                    <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:8px;padding:14px;margin-bottom:14px;font-size:0.85rem;color:#065f46;">
+                        <div style="font-weight:700;margin-bottom:6px;"><i class="fas fa-mobile-alt"></i> M-Pesa Payment Details</div>
+                        <div>📱 <strong>Paybill Number:</strong> <?php echo $paybill; ?></div>
+                        <div>🔢 <strong>Account Number:</strong> <?php echo $account; ?></div>
+                        <div style="margin-top:6px;font-size:0.78rem;opacity:.85;">After payment, enter the M-Pesa transaction ID below and submit. Your wallet will be credited after admin verification.</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">M-Pesa Transaction ID</label>
+                        <input type="text" name="transaction_id" id="txIdMpesa" class="form-control" placeholder="e.g. RBC1234XYZ" style="text-transform:uppercase;">
+                    </div>
                 </div>
+
+                <!-- USDT Details -->
+                <div id="usdt-details" style="display:none;">
+                    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px;margin-bottom:14px;font-size:0.85rem;color:#1e40af;">
+                        <div style="font-weight:700;margin-bottom:8px;"><i class="fas fa-coins"></i> USDT Payment Details</div>
+                        <div>🌐 <strong>Network:</strong> <?php echo sanitize($usdtNetwork); ?></div>
+                        <div style="margin-top:6px;">💼 <strong>Wallet Address:</strong></div>
+                        <div onclick="copyAddress()" title="Click to copy" style="background:white;border:1px solid #bfdbfe;border-radius:6px;padding:8px;margin-top:4px;font-family:monospace;font-size:0.78rem;word-break:break-all;cursor:pointer;">
+                            <?php echo sanitize($usdtAddress); ?>
+                            <i class="fas fa-copy" style="margin-left:6px;color:var(--primary);"></i>
+                        </div>
+                        <div style="margin-top:8px;" id="usdtEquiv">Enter amount above to see USDT equivalent</div>
+                        <div style="margin-top:6px;font-size:0.78rem;opacity:.8;">⚠️ Rate: 1 USDT = KES <?php echo number_format($usdtRate, 2); ?> | Send exact amount to avoid delays</div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">USDT Transaction Hash</label>
+                        <input type="text" name="transaction_id" id="txIdUsdt" class="form-control" placeholder="e.g. 0x1234abcd...">
+                        <div class="form-text">Paste your BEP20 transaction hash after sending</div>
+                    </div>
+                </div>
+
                 <button type="submit" name="deposit" class="btn btn-success btn-block btn-lg">
                     <i class="fas fa-paper-plane"></i> Submit Deposit Request
                 </button>
             </form>
         </div>
+
         <div class="card">
             <div class="card-title" style="margin-bottom:16px;"><i class="fas fa-history" style="color:var(--gray);"></i> Deposit History</div>
             <?php if (empty($deposits)): ?>
@@ -146,6 +195,7 @@ include 'includes/header.php';
                 <div>
                     <div style="font-weight:600;font-size:0.88rem;"><?php echo formatKES($dep['amount']); ?></div>
                     <div style="font-size:0.75rem;color:var(--gray);"><?php echo date('d M Y, g:ia', strtotime($dep['created_at'])); ?></div>
+                    <div style="font-size:0.72rem;color:var(--gray);">Via: <?php echo sanitize($dep['method'] ?? 'M-Pesa'); ?></div>
                     <?php if ($dep['transaction_id']): ?><div style="font-size:0.72rem;color:var(--gray);">Ref: <?php echo sanitize($dep['transaction_id']); ?></div><?php endif; ?>
                 </div>
                 <span class="status-badge status-<?php echo $dep['status']; ?>"><?php echo ucfirst($dep['status']); ?></span>
@@ -219,7 +269,7 @@ include 'includes/header.php';
             <table class="table">
                 <thead><tr><th>Type</th><th>Description</th><th>Amount</th><th>Balance After</th><th>Date</th></tr></thead>
                 <tbody>
-                <?php foreach ($allTx as $tx): 
+                <?php foreach ($allTx as $tx):
                     $isCredit = in_array($tx['type'], ['deposit','return','referral','ad_reward']);
                 ?>
                 <tr>
@@ -240,6 +290,45 @@ include 'includes/header.php';
 </div>
 
 <script>
+function toggleMethod(val) {
+    const mpesa = document.getElementById('mpesa-details');
+    const usdt  = document.getElementById('usdt-details');
+    const btnM  = document.getElementById('btn-mpesa');
+    const btnU  = document.getElementById('btn-usdt');
+    if (val === 'USDT') {
+        mpesa.style.display = 'none';
+        usdt.style.display  = 'block';
+        btnM.style.border = '2px solid var(--border)';
+        btnU.style.border = '2px solid var(--primary)';
+    } else {
+        mpesa.style.display = 'block';
+        usdt.style.display  = 'none';
+        btnM.style.border = '2px solid var(--primary)';
+        btnU.style.border = '2px solid var(--border)';
+    }
+}
+
+function calcUsdt(kes) {
+    const rate = <?php echo $usdtRate ?: 130; ?>;
+    const amt  = parseFloat(kes) || 0;
+    const usdt = amt / rate;
+    const el   = document.getElementById('usdtEquiv');
+    if (el && amt > 0) {
+        el.innerHTML = '💱 Send: <strong>' + usdt.toFixed(4) + ' USDT</strong> (at rate KES <?php echo $usdtRate ?: 130; ?>/USDT)';
+    } else if (el) {
+        el.textContent = 'Enter amount above to see USDT equivalent';
+    }
+}
+
+function copyAddress() {
+    const addr = '<?php echo addslashes($usdtAddress); ?>';
+    navigator.clipboard.writeText(addr).then(() => {
+        alert('✅ Wallet address copied!');
+    }).catch(() => {
+        prompt('Copy this address:', addr);
+    });
+}
+
 function updateNet(val) {
     const amt = parseFloat(val) || 0;
     const fee = amt * <?php echo $feeP/100; ?>;
