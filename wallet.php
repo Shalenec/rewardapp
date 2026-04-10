@@ -300,10 +300,10 @@ include 'includes/header.php';
 <script>
 function toggleMethod(val) {
     document.getElementById('methodInput').value = val;
-    const btnM  = document.getElementById('btn-mpesa');
-    const btnU  = document.getElementById('btn-usdt');
     const mpesa = document.getElementById('mpesa-details');
     const usdt  = document.getElementById('usdt-details');
+    const btnM  = document.getElementById('btn-mpesa');
+    const btnU  = document.getElementById('btn-usdt');
     if (val === 'USDT') {
         mpesa.style.display = 'none';
         usdt.style.display  = 'block';
@@ -320,10 +320,9 @@ function toggleMethod(val) {
 function calcUsdt(kes) {
     const rate = <?php echo $usdtRate ?: 130; ?>;
     const amt  = parseFloat(kes) || 0;
-    const usdt = amt / rate;
     const el   = document.getElementById('usdtEquiv');
     if (el && amt > 0) {
-        el.innerHTML = '💱 Send: <strong>' + usdt.toFixed(4) + ' USDT</strong> (at rate KES <?php echo $usdtRate ?: 130; ?>/USDT)';
+        el.innerHTML = '💱 Send: <strong>' + (amt/rate).toFixed(4) + ' USDT</strong> (at rate KES <?php echo $usdtRate ?: 130; ?>/USDT)';
     } else if (el) {
         el.textContent = 'Enter amount above to see USDT equivalent';
     }
