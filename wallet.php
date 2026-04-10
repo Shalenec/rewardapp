@@ -6,10 +6,10 @@ $db = getDB();
 
 // Handle Deposit Request
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['deposit'])) {
-    $amount  = (float)($_POST['amount'] ?? 0);
-    $txId    = sanitize($_POST['transaction_id'] ?? '');
-    $method  = sanitize($_POST['method'] ?? 'M-Pesa');
-    $minDep  = (float)getSetting('min_deposit');
+    $amount = (float)($_POST['amount'] ?? 0);
+    $txId   = sanitize($_POST['transaction_id'] ?? '');
+    $method = sanitize($_POST['method'] ?? 'M-Pesa');
+    $minDep = (float)getSetting('min_deposit');
 
     // Check duplicate transaction ID
     $txCheck = $db->prepare("SELECT id FROM deposits WHERE transaction_id = ? AND transaction_id != '' LIMIT 1");
@@ -70,11 +70,11 @@ $withdrawals = $db->prepare("SELECT * FROM withdrawals WHERE user_id = ? ORDER B
 $withdrawals->execute([$user['id']]);
 $withdrawals = $withdrawals->fetchAll();
 
-$minDep  = getSetting('min_deposit');
-$minWith = getSetting('min_withdrawal');
-$feeP    = getSetting('withdrawal_fee_percent');
-$paybill = getSetting('mpesa_paybill');
-$account = getSetting('mpesa_account');
+$minDep      = getSetting('min_deposit');
+$minWith     = getSetting('min_withdrawal');
+$feeP        = getSetting('withdrawal_fee_percent');
+$paybill     = getSetting('mpesa_paybill');
+$account     = getSetting('mpesa_account');
 $usdtAddress = getSetting('usdt_wallet_address');
 $usdtNetwork = getSetting('usdt_network');
 $usdtRate    = (float)getSetting('usdt_rate');
@@ -114,26 +114,24 @@ include 'includes/header.php';
     <div class="grid-2">
         <div class="card">
             <div class="card-title" style="margin-bottom:20px;"><i class="fas fa-arrow-down" style="color:var(--success);"></i> Deposit Funds</div>
-            <form method="POST">
 
-                <!-- Payment Method Selector -->
-<div class="form-group">
-    <label class="form-label">Payment Method</label>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px;">
-        <label style="cursor:pointer;">
-            <input type="radio" name="method" value="M-Pesa" checked onchange="toggleMethod(this.value)" style="display:none;">
-            <div id="btn-mpesa" style="border:2px solid var(--primary);border-radius:8px;padding:10px;text-align:center;font-weight:600;font-size:0.85rem;box-sizing:border-box;width:100%;">
-                📱 M-Pesa
+            <!-- Payment Method Toggle — plain buttons, no label/radio hack -->
+            <div class="form-group">
+                <label class="form-label">Payment Method</label>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px;">
+                    <button type="button" id="btn-mpesa" onclick="toggleMethod('M-Pesa')"
+                        style="border:2px solid var(--primary);background:transparent;border-radius:8px;padding:10px;text-align:center;font-weight:600;font-size:0.85rem;cursor:pointer;width:100%;box-sizing:border-box;">
+                        📱 M-Pesa
+                    </button>
+                    <button type="button" id="btn-usdt" onclick="toggleMethod('USDT')"
+                        style="border:2px solid var(--border);background:transparent;border-radius:8px;padding:10px;text-align:center;font-weight:600;font-size:0.85rem;cursor:pointer;width:100%;box-sizing:border-box;">
+                        💎 USDT
+                    </button>
+                </div>
             </div>
-        </label>
-        <label style="cursor:pointer;">
-            <input type="radio" name="method" value="USDT" onchange="toggleMethod(this.value)" style="display:none;">
-            <div id="btn-usdt" style="border:2px solid var(--border);border-radius:8px;padding:10px;text-align:center;font-weight:600;font-size:0.85rem;box-sizing:border-box;width:100%;">
-                💎 USDT (BEP20)
-            </div>
-        </label>
-    </div>
-</div>
+
+            <form method="POST">
+                <input type="hidden" name="method" id="methodInput" value="M-Pesa">
 
                 <!-- Amount -->
                 <div class="form-group">
@@ -145,36 +143,40 @@ include 'includes/header.php';
                     <div class="form-text">Minimum deposit: <?php echo formatKES($minDep); ?></div>
                 </div>
 
-                <!-- M-Pesa Details -->
+                <!-- M-Pesa Details (original layout, unchanged) -->
                 <div id="mpesa-details">
-                    <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:8px;padding:14px;margin-bottom:14px;font-size:0.85rem;color:#065f46;">
-                        <div style="font-weight:700;margin-bottom:6px;"><i class="fas fa-mobile-alt"></i> M-Pesa Payment Details</div>
-                        <div>📱 <strong>Paybill Number:</strong> <?php echo $paybill; ?></div>
-                        <div>🔢 <strong>Account Number:</strong> <?php echo $account; ?></div>
-                        <div style="margin-top:6px;font-size:0.78rem;opacity:.85;">After payment, enter the M-Pesa transaction ID below and submit. Your wallet will be credited after admin verification.</div>
+                    <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:8px;padding:16px;margin-bottom:20px;font-size:0.875rem;">
+                        <div style="font-weight:700;margin-bottom:8px;color:#065f46;"><i class="fas fa-mobile-alt"></i> M-Pesa Payment Details</div>
+                        <div style="color:#047857;line-height:1.8;">
+                            <div>📱 <strong>Paybill Number:</strong> <?php echo $paybill; ?></div>
+                            <div>🔢 <strong>Account Number:</strong> <?php echo $account; ?></div>
+                            <div style="margin-top:8px;font-size:0.8rem;opacity:.85;">After payment, enter the M-Pesa transaction ID below and submit. Your wallet will be credited after admin verification.</div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">M-Pesa Transaction ID</label>
-                        <input type="text" name="transaction_id" id="txIdMpesa" class="form-control" placeholder="e.g. RBC1234XYZ" style="text-transform:uppercase;">
+                        <input type="text" name="transaction_id" class="form-control" placeholder="e.g. RBC1234XYZ" style="text-transform:uppercase;">
                     </div>
                 </div>
 
                 <!-- USDT Details -->
                 <div id="usdt-details" style="display:none;">
-                    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px;margin-bottom:14px;font-size:0.85rem;color:#1e40af;">
-                        <div style="font-weight:700;margin-bottom:8px;"><i class="fas fa-coins"></i> USDT Payment Details</div>
-                        <div>🌐 <strong>Network:</strong> <?php echo sanitize($usdtNetwork); ?></div>
-                        <div style="margin-top:6px;">💼 <strong>Wallet Address:</strong></div>
-                        <div onclick="copyAddress()" title="Click to copy" style="background:white;border:1px solid #bfdbfe;border-radius:6px;padding:8px;margin-top:4px;font-family:monospace;font-size:0.78rem;word-break:break-all;cursor:pointer;">
-                            <?php echo sanitize($usdtAddress); ?>
-                            <i class="fas fa-copy" style="margin-left:6px;color:var(--primary);"></i>
+                    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:16px;margin-bottom:20px;font-size:0.875rem;">
+                        <div style="font-weight:700;margin-bottom:8px;color:#1e40af;"><i class="fas fa-coins"></i> USDT Payment Details</div>
+                        <div style="color:#1e40af;line-height:1.8;">
+                            <div>🌐 <strong>Network:</strong> <?php echo sanitize($usdtNetwork); ?></div>
+                            <div>💼 <strong>Wallet Address:</strong></div>
+                            <div onclick="copyAddress()" title="Click to copy" style="background:white;border:1px solid #bfdbfe;border-radius:6px;padding:8px;margin-top:4px;font-family:monospace;font-size:0.78rem;word-break:break-all;cursor:pointer;">
+                                <?php echo sanitize($usdtAddress); ?>
+                                <i class="fas fa-copy" style="margin-left:6px;color:var(--primary);"></i>
+                            </div>
+                            <div style="margin-top:8px;" id="usdtEquiv">Enter amount above to see USDT equivalent</div>
+                            <div style="margin-top:6px;font-size:0.78rem;opacity:.8;">⚠️ Rate: 1 USDT = KES <?php echo number_format($usdtRate, 2); ?> | Send exact amount to avoid delays</div>
                         </div>
-                        <div style="margin-top:8px;" id="usdtEquiv">Enter amount above to see USDT equivalent</div>
-                        <div style="margin-top:6px;font-size:0.78rem;opacity:.8;">⚠️ Rate: 1 USDT = KES <?php echo number_format($usdtRate, 2); ?> | Send exact amount to avoid delays</div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">USDT Transaction Hash</label>
-                        <input type="text" name="transaction_id" id="txIdUsdt" class="form-control" placeholder="e.g. 0x1234abcd...">
+                        <input type="text" name="transaction_id" class="form-control" placeholder="e.g. 0x1234abcd...">
                         <div class="form-text">Paste your BEP20 transaction hash after sending</div>
                     </div>
                 </div>
@@ -291,10 +293,11 @@ include 'includes/header.php';
 
 <script>
 function toggleMethod(val) {
-    const mpesa = document.getElementById('mpesa-details');
-    const usdt  = document.getElementById('usdt-details');
+    document.getElementById('methodInput').value = val;
     const btnM  = document.getElementById('btn-mpesa');
     const btnU  = document.getElementById('btn-usdt');
+    const mpesa = document.getElementById('mpesa-details');
+    const usdt  = document.getElementById('usdt-details');
     if (val === 'USDT') {
         mpesa.style.display = 'none';
         usdt.style.display  = 'block';
