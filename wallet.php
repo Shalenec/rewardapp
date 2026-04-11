@@ -165,9 +165,13 @@ include 'includes/header.php';
                         <div style="font-weight:700;margin-bottom:8px;"><i class="fas fa-coins"></i> USDT Payment Details</div>
                         <div>🌐 <strong>Network:</strong> <?php echo sanitize($usdtNetwork); ?></div>
                         <div style="margin-top:6px;">💼 <strong>Wallet Address:</strong></div>
-                        <div onclick="copyAddress()" title="Click to copy" style="background:white;border:1px solid #bfdbfe;border-radius:6px;padding:8px;margin-top:4px;font-family:monospace;font-size:0.78rem;word-break:break-all;cursor:pointer;">
-                            <?php echo sanitize($usdtAddress); ?>
-                            <i class="fas fa-copy" style="margin-left:6px;color:var(--primary);"></i>
+                        <div onclick="copyAddress()" title="Click to copy address" style="background:white;border:1px solid #bfdbfe;border-radius:6px;padding:8px;margin-top:4px;font-family:monospace;font-size:0.78rem;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:6px;">
+                            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">
+                                <?php echo sanitize($usdtAddress); ?>
+                            </span>
+                            <span style="flex-shrink:0;color:var(--primary);font-size:0.75rem;white-space:nowrap;">
+                                <i class="fas fa-copy"></i> Copy
+                            </span>
                         </div>
                         <div style="margin-top:8px;" id="usdtEquiv">Enter amount above to see USDT equivalent</div>
                         <div style="margin-top:6px;font-size:0.78rem;opacity:.8;">⚠️ Rate: 1 USDT = KES <?php echo number_format($usdtRate, 2); ?> | Send exact amount to avoid delays</div>
