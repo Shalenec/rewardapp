@@ -160,28 +160,29 @@ include 'includes/header.php';
                 </div>
 
                 <!-- USDT Details -->
-                <div id="usdt-details" style="display:none;">
-                    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px;margin-bottom:14px;font-size:0.85rem;color:#1e40af;">
+                <div id="usdt-details" style="display:none;max-width:100%;overflow:hidden;">
+                    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:14px;margin-bottom:14px;font-size:0.85rem;color:#1e40af;box-sizing:border-box;width:100%;overflow:hidden;">
                         <div style="font-weight:700;margin-bottom:8px;"><i class="fas fa-coins"></i> USDT Payment Details</div>
                         <div>🌐 <strong>Network:</strong> <?php echo sanitize($usdtNetwork); ?></div>
                         <div style="margin-top:6px;">💼 <strong>Wallet Address:</strong></div>
-                        <div onclick="copyAddress()" title="Click to copy address" style="background:white;border:1px solid #bfdbfe;border-radius:6px;padding:8px;margin-top:4px;font-family:monospace;font-size:0.78rem;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:6px;">
-                            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">
+                        <div onclick="copyAddress()" title="Click to copy" style="background:white;border:1px solid #bfdbfe;border-radius:6px;padding:8px;margin-top:4px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:6px;box-sizing:border-box;width:100%;">
+                            <span style="font-family:monospace;font-size:0.75rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">
                                 <?php echo sanitize($usdtAddress); ?>
                             </span>
                             <span style="flex-shrink:0;color:var(--primary);font-size:0.75rem;white-space:nowrap;">
                                 <i class="fas fa-copy"></i> Copy
                             </span>
                         </div>
-                        <div style="margin-top:8px;" id="usdtEquiv">Enter amount above to see USDT equivalent</div>
-                        <div style="margin-top:6px;font-size:0.78rem;opacity:.8;">⚠️ Rate: 1 USDT = KES <?php echo number_format($usdtRate, 2); ?> | Send exact amount to avoid delays</div>
+                        <div style="margin-top:8px;font-size:0.82rem;" id="usdtEquiv">Enter amount above to see USDT equivalent</div>
+                        <div style="margin-top:6px;font-size:0.75rem;opacity:.8;word-break:break-word;">⚠️ Rate: 1 USDT = KES <?php echo number_format($usdtRate, 2); ?> | Send exact amount to avoid delays</div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">USDT Transaction Hash</label>
-                        <input type="text" name="transaction_id" id="txIdUsdt" class="form-control" placeholder="e.g. 0x1234abcd...">
+                        <input type="text" name="transaction_id" id="txIdUsdt" class="form-control" style="width:100%;box-sizing:border-box;" placeholder="e.g. 0x1234abcd...">
                         <div class="form-text">Paste your BEP20 transaction hash after sending</div>
                     </div>
                 </div>
+
 
                 <button type="submit" name="deposit" class="btn btn-success btn-block btn-lg">
                     <i class="fas fa-paper-plane"></i> Submit Deposit Request
