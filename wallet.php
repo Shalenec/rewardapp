@@ -82,7 +82,11 @@ $usdtRate    = (float)getSetting('usdt_rate');
 $pageTitle = 'Wallet';
 include 'includes/header.php';
 ?>
-
+<style>
+#tab-deposit .card { overflow:hidden; box-sizing:border-box; }
+#usdt-details, #mpesa-details { max-width:100%; overflow:hidden; }
+.form-control { box-sizing:border-box; max-width:100%; }
+</style>
 <div class="page-header">
     <h1><i class="fas fa-wallet" style="color:var(--primary);"></i> My Wallet</h1>
     <p>Manage your deposits, withdrawals and transaction history</p>
